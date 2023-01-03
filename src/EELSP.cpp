@@ -20,11 +20,23 @@ void EELPROM::init_toc() {
     }
 }
 
+void EELPROM::overwrite(int segment){
+    if(segment == EELPROM_SEGMENTS)
+        throw std::out_of_range("EELPROM::overwrite: out of range. Nonsense to overwrite STOP segment.");
+    this->toc[segment].write = this->toc[segment].start;
+}
+
 void EELPROM::read(int segment, void *data, size_t size){
     if(segment == EELPROM_SEGMENTS)
         throw std::out_of_range("EELPROM::read: out of range. STOP segment is not readable.");
     EEPROM.readBytes(this->toc[segment].read, data, size);
     this->toc[segment].read += size;
+}
+
+void EELPROM::reread(int segment){
+    if(segment == EELPROM_SEGMENTS)
+        throw std::out_of_range("EELPROM::reread: out of range. Nonsense to reread STOP segment.");
+    this->toc[segment].read = this->toc[segment].start;
 }
 
 void EELPROM::write(int segment, uint8_t value){
@@ -47,17 +59,6 @@ void EELPROM::write(int segment, const void *data, size_t size){
         throw std::out_of_range("EELPROM::write: out of range. Segment is full.");
     EEPROM.writeBytes(this->toc[segment].write, data, size);
     this->toc[segment].write += size;
-}
-
-void EELPROM::reread(int segment){
-    if(segment == EELPROM_SEGMENTS)
-        throw std::out_of_range("EELPROM::reread: out of range. Nonsense to reread STOP segment.");
-    this->toc[segment].read = this->toc[segment].start;
-}
-void EELPROM::overwrite(int segment){
-    if(segment == EELPROM_SEGMENTS)
-        throw std::out_of_range("EELPROM::overwrite: out of range. Nonsense to overwrite STOP segment.");
-    this->toc[segment].write = this->toc[segment].start;
 }
 
 raw_configured_ssid SSID::cast() {
@@ -94,6 +95,20 @@ void EELWiFi::load() {
     
 }
 
+void EELWiFi::save() {
+
+    EELSP.eeprom->overwrite(WIFI_SEGMENT);
+
+    for(auto ssid : ssidMap) {
+        raw_configured_ssid raw = ssid.second.cast();
+        if(raw.ip == NULLADDRESS)
+            EELSP.eeprom->write(WIFI_SEGMENT, &raw, 
+                (raw.ip == NULLADDRESS) ? sizeof(raw_ssid) : sizeof(raw_configured_ssid));
+    }
+    EELSP.eeprom->write(WIFI_SEGMENT, NULLADDRESS);
+    dirty = false;
+}
+
 void EELWiFi::scan() {
     int n = WiFi.scanNetworks();
     for (int i = 0; i < n; ++i) {
@@ -112,19 +127,6 @@ void EELWiFi::connect() {
 }
 
 
-void EELWiFi::save() {
-
-    EELSP.eeprom->overwrite(WIFI_SEGMENT);
-
-    for(auto ssid : ssidMap) {
-        raw_configured_ssid raw = ssid.second.cast();
-        if(raw.ip == NULLADDRESS)
-            EELSP.eeprom->write(WIFI_SEGMENT, &raw, 
-                (raw.ip == NULLADDRESS) ? sizeof(raw_ssid) : sizeof(raw_configured_ssid));
-    }
-    EELSP.eeprom->write(WIFI_SEGMENT, NULLADDRESS);
-    dirty = false;
-}
 
 
 void EELWiFi::add(const char *ssid, const char *password,
