@@ -13,8 +13,8 @@ EELPROM::~EELPROM(){
 void EELPROM::init_toc() {
     for(int i = 0; i < EELPROM_SEGMENTS; i++){
         this->toc[i].start = 0;
-        if(i)
-            this->toc[i].start = this->toc[i-1].start + SEGMENT_SIZE;
+        if(i) // this allocates the remaining size to the last segment
+            this->toc[i].start = this->toc[i-1].start + SEGMENT_SIZE; 
         this->toc[i].read  = this->toc[i].start;
         this->toc[i].write = this->toc[i].start;
     }
@@ -76,20 +76,20 @@ EELWiFi::EELWiFi()  { load(); }
 
 void EELWiFi::load() {
     raw_configured_ssid raw;
-    EELSP->eeprom.reread(WIFI_SEGMENT);
-    EELSP->eeprom.read(WIFI_SEGMENT, &raw, sizeof(raw_ssid));
+    EELSP.eeprom->reread(WIFI_SEGMENT);
+    EELSP.eeprom->read(WIFI_SEGMENT, &raw, sizeof(raw_ssid));
     while (raw.ssid != NULL && raw.ssid[0] != '\0') {
-        EELSP->eeprom.read(WIFI_SEGMENT, &raw + sizeof(raw_ssid::ssid), sizeof(raw_ssid) - sizeof(raw_ssid::ssid));
+        EELSP.eeprom->read(WIFI_SEGMENT, &raw + sizeof(raw_ssid::ssid), sizeof(raw_ssid) - sizeof(raw_ssid::ssid));
         if(raw.ip == 0x00) {
             SSID ssid = SSID(raw.ssid, raw.password);
             this->ssidMap[raw.ssid] = ssid;
         }
         else {
-            EELSP->eeprom.read(WIFI_SEGMENT, &raw + sizeof(raw_ssid), sizeof(raw_configured_ssid) - sizeof(raw_ssid));
+            EELSP.eeprom->read(WIFI_SEGMENT, &raw + sizeof(raw_ssid), sizeof(raw_configured_ssid) - sizeof(raw_ssid));
             SSID ssid = SSID(raw.ssid, raw.password, raw.ip, raw.gateway, raw.subnet, raw.dns1, raw.dns2);
             ssidMap[raw.ssid] = ssid;
         }
-        EELSP->eeprom.read(WIFI_SEGMENT, &raw, sizeof(raw_ssid::ssid));
+        EELSP.eeprom->read(WIFI_SEGMENT, &raw, sizeof(raw_ssid::ssid));
     }
     
 }
@@ -114,15 +114,15 @@ void EELWiFi::connect() {
 
 void EELWiFi::save() {
 
-    EELSP->eeprom.overwrite(WIFI_SEGMENT);
+    EELSP.eeprom->overwrite(WIFI_SEGMENT);
 
     for(auto ssid : ssidMap) {
         raw_configured_ssid raw = ssid.second.cast();
         if(raw.ip == NULLADDRESS)
-            EELSP->eeprom.write(WIFI_SEGMENT, &raw, 
+            EELSP.eeprom->write(WIFI_SEGMENT, &raw, 
                 (raw.ip == NULLADDRESS) ? sizeof(raw_ssid) : sizeof(raw_configured_ssid));
     }
-    EELSP->eeprom.write(WIFI_SEGMENT, NULLADDRESS);
+    EELSP.eeprom->write(WIFI_SEGMENT, NULLADDRESS);
     dirty = false;
 }
 
