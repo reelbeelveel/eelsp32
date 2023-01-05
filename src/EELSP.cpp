@@ -1,5 +1,15 @@
 #include "EELSP.h"
 
+EELSP32::EELSP32() {
+    this->eeprom = new EELPROM();
+    this->wifi = new EELWiFi();
+}
+EELSP32::~EELSP32() {
+    delete this->eeprom;
+    delete this->wifi;
+}
+void EELSP32::reset() {}
+
 EELPROM::EELPROM(){
     EEPROM.begin(EELPROM_MEM_SIZE);
     init_toc();
@@ -81,11 +91,10 @@ void EELWiFi::load() {
     EELSP.eeprom->read(WIFI_SEGMENT, &raw, sizeof(raw_ssid));
     while (raw.ssid != NULL && raw.ssid[0] != '\0') {
         EELSP.eeprom->read(WIFI_SEGMENT, &raw + sizeof(raw_ssid::ssid), sizeof(raw_ssid) - sizeof(raw_ssid::ssid));
-        if(raw.ip == 0x00) {
+        if(!raw.ip) {
             SSID ssid = SSID(raw.ssid, raw.password);
             this->ssidMap[raw.ssid] = ssid;
-        }
-        else {
+        } else {
             EELSP.eeprom->read(WIFI_SEGMENT, &raw + sizeof(raw_ssid), sizeof(raw_configured_ssid) - sizeof(raw_ssid));
             SSID ssid = SSID(raw.ssid, raw.password, raw.ip, raw.gateway, raw.subnet, raw.dns1, raw.dns2);
             ssidMap[raw.ssid] = ssid;
@@ -120,21 +129,12 @@ void EELWiFi::scan() {
     }
 }
 
-void EELWiFi::connect() {
-    if(this->ssidStack.empty())
-        return;
-    
-}
-
-
-
-
 void EELWiFi::add(const char *ssid, const char *password,
-        IPAddress ip = NULLADDRESS,
-        IPAddress gateway = NULLADDRESS,
-        IPAddress subnet = NULLADDRESS,
-        IPAddress dns1 = NULLADDRESS,
-        IPAddress dns2 = NULLADDRESS) {
+        IPAddress ip,
+        IPAddress gateway,
+        IPAddress subnet,
+        IPAddress dns1,
+        IPAddress dns2) {
     add(SSID(ssid, password, ip, gateway, subnet, dns1, dns2));
 }
 
@@ -163,3 +163,5 @@ bool SSID::connect()
     WiFi.begin(ssid, _password);
     return true;
 }
+
+EELSP32 EELSP;

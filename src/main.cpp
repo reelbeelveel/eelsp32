@@ -1,6 +1,7 @@
 #include <Arduino.h>
-#include <M5StickCPlus.h>
 #include <BluetoothSerial.h>
+#include <M5StickCPlus.h>
+#undef min
 #include <EELSP.h>
 
 #define drawPixel(a, b, c)            \
